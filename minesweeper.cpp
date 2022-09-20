@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
-#include <cstdio>
 
 struct IndexToCorner {
 	bool BelongToTwoCorners;
@@ -46,10 +45,13 @@ const SlotCoordinates CORNER_INDEXES_TO_SLOT_COORDS[4][3] = {
 	{ {1, 0}, {1, 1}, {0, 1} }
 };
 
+void insertMenuActionChoice(int &menuActionChoice);
 void insertFieldSettings(int &size, int &mines);
 void insertSlotCoordinates(int &row, int&col, char **front, int frontSize);
 void insertActionType(int &actionType, int row, int col);
 
+void printGreetings();
+void printProposedFieldSettings();
 void printNumberWidely(int n);
 void printNumberNarrowly(int n);
 void printCharWidely(char &c);
@@ -58,10 +60,11 @@ void printSpacebarForArrowWidely();
 void printSpacebarForArrowNarrowly();
 void printField(char** field, int size);
 void printFrontFieldWithChosenCoordinates(char** front, int frontSize, int row, int col);
-void pauseConsole(); 
-void printGameEnd(); 
+void pauseConsole(char* str);
+void printGameEnd();
 void printReactionToOpeningMarkedSlot();
 void printYouWon(int frontSize, int mines);
+void printGameLegend();
 
 void allocateMemoryForField(char** &field, int size);
 void freeMemoryAllocatedForField(char** field, int size);
@@ -69,6 +72,7 @@ void fillFieldWithSymbol(char** field, int size, char symbol);
 int generateRandomRowOrCol(int backSize);
 void fillBackFieldWithMinesAndNumbers(char** back, int backSize, int mines); 
 void openWholeFrontField(char** back, int backSize, char** front);
+void replaceAllMinesWithFlags(char** front, int frontSize);
 void openSlot(char** &back, char** &front, int &frontSize, int row, int col);
 void openSlotFirstTouch(char** &back, char** &front, int &frontSize, int row, int col);
 void markOrUnmarkSlot(char** front, int row, int col); 
@@ -79,9 +83,15 @@ int main() {
 	char **back;
 	// 'front' field is the array that is shown to a player and that takes the information from 'back'
 	char **front;
-	int frontSize, backSize;
-	int mines;
+	int frontSize, backSize, mines;
 	int row, col;
+	/*
+	'menuActionChoice' possible values:
+	0 - exit the game
+	1 - start the game
+	2 - see the game legend
+	*/
+	int menuActionChoice = 1;
 	/*
 	'actionType' possible values:
 	0 - cancel (re-choose the slot)
@@ -91,62 +101,84 @@ int main() {
 	int actionType;
 	bool gameIsGoing;
 
-	while (true) {
-		gameIsGoing = true;
+	printGreetings();
+	while (menuActionChoice) {
+		insertMenuActionChoice(menuActionChoice);
 		system("cls");
-		insertFieldSettings(frontSize, mines);
-		backSize = frontSize + 2;
+		if (menuActionChoice == 1) {
+			gameIsGoing = true;
+			printProposedFieldSettings();
+			insertFieldSettings(frontSize, mines);
+			backSize = frontSize + 2;
 
-		allocateMemoryForField(back, backSize);
-		allocateMemoryForField(front, frontSize);
+			allocateMemoryForField(back, backSize);
+			allocateMemoryForField(front, frontSize);
 
-		fillFieldWithSymbol(back, backSize, '0');
-		fillBackFieldWithMinesAndNumbers(back, backSize, mines);
-		fillFieldWithSymbol(front, frontSize, '#');
+			fillFieldWithSymbol(back, backSize, '0');
+			fillBackFieldWithMinesAndNumbers(back, backSize, mines);
+			fillFieldWithSymbol(front, frontSize, '#');
 
-		while (gameIsGoing) {
-			do {
-				system("cls");
-				printField(front, frontSize);
-				insertSlotCoordinates(row, col, front, frontSize);
-				system("cls");
-				printFrontFieldWithChosenCoordinates(front, frontSize, row, col);
-				insertActionType(actionType, row, col);
-			} while (actionType == 0);
+			while (gameIsGoing) {
+				do {
+					system("cls");
+					printField(front, frontSize);
+					insertSlotCoordinates(row, col, front, frontSize);
+					system("cls");
+					printFrontFieldWithChosenCoordinates(front, frontSize, row, col);
+					insertActionType(actionType, row, col);
+				} while (actionType == 0);
 
-			if (actionType == 1 && front[row - 1][col - 1] == 'P') {
-				printReactionToOpeningMarkedSlot();
-			}
-			else if (actionType == 1 && back[row][col] == '*') {
-				back[row][col] = '%';
-				openWholeFrontField(back, backSize, front);
-				system("cls");
-				printField(front, frontSize);
-				printGameEnd();
-				gameIsGoing = false;
-			}
-			else if (actionType == 1) {
-				openSlotFirstTouch(back, front, frontSize, row, col); // check (1)
-				gameIsGoing = !checkWonOrNot(back, backSize, front);
-				if (gameIsGoing == false) {
+				if (actionType == 1 && front[row - 1][col - 1] == 'P') {
+					printReactionToOpeningMarkedSlot();
+				}
+				else if (actionType == 1 && back[row][col] == '*') {
+					back[row][col] = '%';
 					openWholeFrontField(back, backSize, front);
 					system("cls");
 					printField(front, frontSize);
-					printYouWon(frontSize, mines);
+					printGameEnd();
+					gameIsGoing = false;
+				}
+				else if (actionType == 1) {
+					openSlotFirstTouch(back, front, frontSize, row, col);
+					gameIsGoing = !checkWonOrNot(back, backSize, front);
+					if (gameIsGoing == false) {
+						openWholeFrontField(back, backSize, front);
+						replaceAllMinesWithFlags(front, frontSize);
+						system("cls");
+						printField(front, frontSize);
+						printYouWon(frontSize, mines);
+					}
+				}
+				else { // if (actionType == 2)
+					markOrUnmarkSlot(front, row, col);
 				}
 			}
-			else { // if (actionType == 2)
-				markOrUnmarkSlot(front, row, col);
-			}
+			freeMemoryAllocatedForField(back, backSize);
+			freeMemoryAllocatedForField(front, frontSize);
 		}
+		else if (menuActionChoice == 2) {
+			printGameLegend();
+		}
+		system("cls");
+	}
+}
 
-		freeMemoryAllocatedForField(back, backSize);
-		freeMemoryAllocatedForField(front, frontSize);
+void insertMenuActionChoice(int &menuActionChoice) {
+	printf("You have the next options:\n");
+	printf("1 - start the game\n");
+	printf("2 - see the game legend\n");
+	printf("0 - exit the game\n\n");
+	printf("Choose what you want to do (type in the number): ");
+	scanf("%d", &menuActionChoice);
+	while (menuActionChoice < 0 || menuActionChoice > 2) {
+		printf("Please, type in the correct number: ");
+		scanf("%d", &menuActionChoice);
 	}
 }
 
 void insertFieldSettings(int &size, int &mines) {
-	printf("Type in the field size: ");
+	printf("Type in the field size (one number): ");
 	scanf("%d", &size);
 	while (size < 1) {
 		printf("Please, type in the correct field size: ");
@@ -200,6 +232,18 @@ void insertActionType(int &actionType, int row, int col) {
 		scanf("%d", &actionType);
 	}
 	printf("\n");
+}
+
+void printGreetings() {
+	printf("Welcome to Minesweeper game!\n\n");
+}
+
+void printProposedFieldSettings() {
+	printf("There are some standard difficulty modes:\n");
+	printf("Beginner - 9x9 field size, 10 mines\n");
+	printf("Intermediate - 16x16 field size, 40 mines\n");
+	printf("Expert - 22x22 field size, 100 mines\n\n");
+	printf("However, you can choose any settings you want.\n\n");
 }
 
 void printNumberWidely(int n) {
@@ -303,25 +347,37 @@ void printFrontFieldWithChosenCoordinates(char** front, int frontSize, int row, 
 	printf("You have chosen the slot in row %d, column %d.\n\n", row, col);
 }
 
-void pauseConsole() {
-	printf("Press any key to continue.\n");
+void pauseConsole(const char* str) {
+	printf("Press Enter to ");
+	printf(str);
+	printf(".\n");
 	getchar();
 	getchar();
 }
 
 void printGameEnd() {
 	printf("Game over! You have chosen the slot with a mine!\n");
-	pauseConsole();
+	pauseConsole("continue");
 }
 
 void printReactionToOpeningMarkedSlot() {
 	printf("You cannot open the marked slot! Unmark it first.\n");
-	pauseConsole();
+	pauseConsole("continue");
 }
 
 void printYouWon(int frontSize, int mines) {
 	printf("Congratulations! You won!\nField size - %dx%d, amount of mines - %d.\n", frontSize, frontSize, mines);
-	pauseConsole();
+	pauseConsole("continue");
+}
+
+void printGameLegend() {
+	printf("Here you can find explanation of symbols used in the game:\n"); // ...
+	printf("# - an unopened slot\n");
+	printf("P - a slot that was flagged as containing a mine\n");
+	printf("* - a mine\n");
+	printf("%% - an exploded mine\n");
+	printf("Numbers 0...8 - an opened slot showing an amount of mines in nearby slots\n\n");
+	pauseConsole("return to the menu");
 }
 
 void allocateMemoryForField(char** &field, int size) {
@@ -378,6 +434,16 @@ void openWholeFrontField(char** back, int backSize, char** front) {
 	for (int k = 1; k < backSize - 1; ++k) {
 		for (int i = 1; i < backSize - 1; ++i) {
 			front[k - 1][i - 1] = back[k][i];
+		}
+	}
+}
+
+void replaceAllMinesWithFlags(char** front, int frontSize) {
+	for (int k = 0; k < frontSize; ++k) {
+		for (int i = 0; i < frontSize; ++i) {
+			if (front[k][i] == '*') {
+				front[k][i] = 'P';
+			}
 		}
 	}
 }
