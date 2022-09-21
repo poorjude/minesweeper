@@ -1,4 +1,4 @@
-# Minesweeper game in console
+## Minesweeper game in console
 To run: download `minesweeper.exe` and open it.
 
 Features:
