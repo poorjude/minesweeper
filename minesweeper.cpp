@@ -20,7 +20,6 @@ corner0 | 0 1 2 | corner1
         | 3 4 5 | 
 corner2 | 6 7 8 | corner3
 where 0...3 and 5...8 are indexes of nearby slots and 4 is an index of a current slot
-all other numbers are indexes of nearby slots
 we have 4 corners with 3 slots in each of them
 corner indexes are 0, 1, 2, 3 starting from the top left corner
 */
@@ -49,33 +48,27 @@ void insertMenuActionChoice(int &menuActionChoice);
 void insertFieldSettings(int &size, int &mines);
 void insertSlotCoordinates(int &row, int&col, char **front, int frontSize);
 void insertActionType(int &actionType, int row, int col);
+void insertNewRecord(int frontSize, int mines, unsigned int timeSpent);
 
 void printGreetings();
 void printProposedFieldSettings();
-void printNumberWidely(int n);
-void printNumberNarrowly(int n);
-void printCharWidely(char &c);
-void printCharNarrowly(char &c);
-void printSpacebarForArrowWidely();
-void printSpacebarForArrowNarrowly();
-void printField(char** field, int size);
-void printFrontFieldWithChosenCoordinates(char** front, int frontSize, int row, int col);
-void pauseConsole(char* str);
+void printField(char** field, int size, int mines, int flags);
+void printFrontFieldWithChosenCoordinates(char** front, int frontSize, int mines, int flags, int row, int col);
 void printGameEnd();
 void printReactionToOpeningMarkedSlot();
-void printYouWon(int frontSize, int mines);
+void printYouWon(int frontSize, int mines, unsigned int timeSpent);
 void printGameLegend();
+void printGameRecords();
 
 void allocateMemoryForField(char** &field, int size);
 void freeMemoryAllocatedForField(char** field, int size);
 void fillFieldWithSymbol(char** field, int size, char symbol);
-int generateRandomRowOrCol(int backSize);
 void fillBackFieldWithMinesAndNumbers(char** back, int backSize, int mines); 
 void openWholeFrontField(char** back, int backSize, char** front);
 void replaceAllMinesWithFlags(char** front, int frontSize);
-void openSlot(char** &back, char** &front, int &frontSize, int row, int col);
+void openSlot(char** &back, char** &front, int &frontSize, int row, int col); //
 void openSlotFirstTouch(char** &back, char** &front, int &frontSize, int row, int col);
-void markOrUnmarkSlot(char** front, int row, int col); 
+void markOrUnmarkSlot(char** front, int row, int col, int &flags);
 bool checkWonOrNot(char** back, int backSize, char** front);
 
 int main() {
@@ -83,13 +76,14 @@ int main() {
 	char **back;
 	// 'front' field is the array that is shown to a player and that takes the information from 'back'
 	char **front;
-	int frontSize, backSize, mines;
+	int frontSize, backSize, mines, flags;
 	int row, col;
 	/*
 	'menuActionChoice' possible values:
 	0 - exit the game
 	1 - start the game
 	2 - see the game legend
+	3 - see records
 	*/
 	int menuActionChoice = 1;
 	/*
@@ -99,6 +93,8 @@ int main() {
 	2 - mark/unmark the slot as the one with a mine
 	*/
 	int actionType;
+	unsigned int startTimestamp;
+	unsigned int timeSpent;
 	bool gameIsGoing;
 
 	printGreetings();
@@ -107,6 +103,7 @@ int main() {
 		system("cls");
 		if (menuActionChoice == 1) {
 			gameIsGoing = true;
+			flags = 0;
 			printProposedFieldSettings();
 			insertFieldSettings(frontSize, mines);
 			backSize = frontSize + 2;
@@ -118,13 +115,13 @@ int main() {
 			fillBackFieldWithMinesAndNumbers(back, backSize, mines);
 			fillFieldWithSymbol(front, frontSize, '#');
 
+			startTimestamp = unsigned int (time(0));
+
 			while (gameIsGoing) {
 				do {
-					system("cls");
-					printField(front, frontSize);
+					printField(front, frontSize, mines, flags);
 					insertSlotCoordinates(row, col, front, frontSize);
-					system("cls");
-					printFrontFieldWithChosenCoordinates(front, frontSize, row, col);
+					printFrontFieldWithChosenCoordinates(front, frontSize, mines, flags, row, col);
 					insertActionType(actionType, row, col);
 				} while (actionType == 0);
 
@@ -134,8 +131,7 @@ int main() {
 				else if (actionType == 1 && back[row][col] == '*') {
 					back[row][col] = '%';
 					openWholeFrontField(back, backSize, front);
-					system("cls");
-					printField(front, frontSize);
+					printField(front, frontSize, mines, flags);
 					printGameEnd();
 					gameIsGoing = false;
 				}
@@ -143,15 +139,16 @@ int main() {
 					openSlotFirstTouch(back, front, frontSize, row, col);
 					gameIsGoing = !checkWonOrNot(back, backSize, front);
 					if (gameIsGoing == false) {
+						timeSpent = unsigned int (time(0)) - startTimestamp;
 						openWholeFrontField(back, backSize, front);
 						replaceAllMinesWithFlags(front, frontSize);
-						system("cls");
-						printField(front, frontSize);
-						printYouWon(frontSize, mines);
+						printField(front, frontSize, mines, flags);
+						printYouWon(frontSize, mines, timeSpent);
+						insertNewRecord(frontSize, mines, timeSpent);
 					}
 				}
 				else { // if (actionType == 2)
-					markOrUnmarkSlot(front, row, col);
+					markOrUnmarkSlot(front, row, col, flags);
 				}
 			}
 			freeMemoryAllocatedForField(back, backSize);
@@ -160,18 +157,36 @@ int main() {
 		else if (menuActionChoice == 2) {
 			printGameLegend();
 		}
+		else if (menuActionChoice == 3) {
+			printGameRecords();
+		}
 		system("cls");
 	}
 }
 
+bool askWantToSaveRecordOrNot();
+void insertPlayerName(char* name, const int MAXLENGTH);
+
+void printNumberWidely(int n);
+void printNumberNarrowly(int n);
+void printCharWidely(char &c);
+void printCharNarrowly(char &c);
+void printSpacebarForArrowWidely();
+void printSpacebarForArrowNarrowly();
+
+int generateRandomRowOrCol(int backSize);
+
+void pauseConsole(const char* str);
+
 void insertMenuActionChoice(int &menuActionChoice) {
-	printf("You have the next options:\n");
+	printf("You have the next options:\n\n");
 	printf("1 - start the game\n");
-	printf("2 - see the game legend\n");
+	printf("2 - see the legend\n");
+	printf("3 - see your records\n");
 	printf("0 - exit the game\n\n");
 	printf("Choose what you want to do (type in the number): ");
 	scanf("%d", &menuActionChoice);
-	while (menuActionChoice < 0 || menuActionChoice > 2) {
+	while (menuActionChoice < 0 || menuActionChoice > 3) {
 		printf("Please, type in the correct number: ");
 		scanf("%d", &menuActionChoice);
 	}
@@ -234,6 +249,63 @@ void insertActionType(int &actionType, int row, int col) {
 	printf("\n");
 }
 
+bool askWantToSaveRecordOrNot() {
+	int answer;
+	printf("Would you like to save your record?\n");
+	printf("1 - yes\n");
+	printf("0 - no\n");
+	printf("Type in the number: ");
+	scanf("%d", &answer);
+	while (answer < 0 || answer > 1) {
+		printf("Please, type in the correct number: ");
+		scanf("%d", &answer);
+	}
+	return answer;
+}
+
+void insertPlayerName(char* name, const int MAXLENGTH) {
+	printf("Type in your name (one word): ");
+	getchar();
+	fgets(name, MAXLENGTH, stdin);
+	for (int i = 0; i < MAXLENGTH; ++i) {
+		if (name[i] == ' ' || name[i] == '\n') {
+			name[i] = '\0';
+			break;
+		}
+	}
+}
+
+void insertNewRecord(int frontSize, int mines, unsigned int timeSpent) {
+	if (!askWantToSaveRecordOrNot()) {
+		printf("Your record will not be saved.\n\n");
+		pauseConsole("return to the menu");
+		return void();
+	}
+	FILE *records;
+	if (fopen_s(&records, "minesweeper_records.txt", "a") != 0) {
+		printf("Sorry, something went wrong.\n\n");
+		pauseConsole("return to the menu");
+		return void();
+	}
+	const int MAXLENGTH = 12;
+	char name[MAXLENGTH];
+	insertPlayerName(name, MAXLENGTH);
+
+	putc('-', records);
+	fprintf(records, "%s", name);
+	putc(':', records);
+	fprintf(records, "%d", frontSize);
+	putc(':', records);
+	fprintf(records, "%d", mines);
+	putc(':', records);
+	fprintf(records, "%u", timeSpent);
+	putc(':', records);
+	
+	fclose(records);
+	printf("Your record was saved.\n\n");
+	pauseConsole("return to the menu");
+}
+
 void printGreetings() {
 	printf("Welcome to Minesweeper game!\n\n");
 }
@@ -269,7 +341,11 @@ void printSpacebarForArrowNarrowly() {
 	printf("  ");
 }
 
-void printField(char** field, int size) {
+// also clears the console and prints how many mines left
+void printField(char** field, int size, int mines, int flags) {
+	system("cls");
+	printf("Mines left: %d\n\n", mines - flags);
+
 	void(*printNumber)(int);
 	void(*printChar)(char&);
 	if (size > 9) {
@@ -301,7 +377,11 @@ void printField(char** field, int size) {
 	printf("\n");
 }
 
-void printFrontFieldWithChosenCoordinates(char** front, int frontSize, int row, int col) {
+// also clears the console and prints how many mines left
+void printFrontFieldWithChosenCoordinates(char** front, int frontSize, int mines, int flags, int row, int col) {
+	system("cls");
+	printf("Mines left: %d\n\n", mines - flags);
+
 	void(*printNumber)(int);
 	void(*printChar)(char&);
 	void(*printSpacebarForArrow)();
@@ -365,19 +445,77 @@ void printReactionToOpeningMarkedSlot() {
 	pauseConsole("continue");
 }
 
-void printYouWon(int frontSize, int mines) {
-	printf("Congratulations! You won!\nField size - %dx%d, amount of mines - %d.\n", frontSize, frontSize, mines);
+void printYouWon(int frontSize, int mines, unsigned int timeSpent) {
+	printf("Congratulations! You won!\n");
+	printf("Field size - %dx%d, amount of mines - %d, time spent - %u seconds.\n", frontSize, frontSize, mines, timeSpent);
 	pauseConsole("continue");
 }
 
 void printGameLegend() {
-	printf("Here you can find explanation of symbols used in the game:\n"); // ...
+	printf("Here you can find explanation of symbols used in the game:\n\n");
 	printf("# - an unopened slot\n");
 	printf("P - a slot that was flagged as containing a mine\n");
 	printf("* - a mine\n");
 	printf("%% - an exploded mine\n");
 	printf("Numbers 0...8 - an opened slot showing an amount of mines in nearby slots\n\n");
 	pauseConsole("return to the menu");
+}
+
+void printGameRecords() {
+	printf("Here you can find your previous game records.\n\n");
+	FILE *records;
+	if (fopen_s(&records, "minesweeper_records.txt", "r") != 0) {
+		printf("You do not have any records yet!\n\n");
+		pauseConsole("return to the menu");
+		return void();
+	}
+	int c;
+	int spacebarCounter;
+	printf(" Player name | Field size | Mines | Time (s)\n");
+	while (getc(records) != EOF) {
+		// printing player name
+		spacebarCounter = 12;
+		printf(" ");
+		while ( (c = getc(records)) != ':') {
+			printf("%c", c);
+			spacebarCounter -= 1;
+		}
+		while (spacebarCounter > 0) {
+			printf(" ");
+			spacebarCounter -= 1;
+		}
+		printf("| ");
+		// printing field size
+		spacebarCounter = 11;
+		while ((c = getc(records)) != ':') {
+			printf("%c", c);
+			spacebarCounter -= 1;
+		}
+		while (spacebarCounter > 0) {
+			printf(" ");
+			spacebarCounter -= 1;
+		}
+		printf("| ");
+		// printing amount of mines
+		spacebarCounter = 6;
+		while ((c = getc(records)) != ':') {
+			printf("%c", c);
+			spacebarCounter -= 1;
+		}
+		while (spacebarCounter > 0) {
+			printf(" ");
+			spacebarCounter -= 1;
+		}
+		printf("| ");
+		// printing time spent
+		while ((c = getc(records)) != ':') {
+			printf("%c", c);
+		}
+		printf("\n");
+	}
+	printf("\n");
+	pauseConsole("return to the menu");
+	fclose(records);
 }
 
 void allocateMemoryForField(char** &field, int size) {
@@ -409,7 +547,7 @@ int generateRandomRowOrCol(int backSize) {
 void fillBackFieldWithMinesAndNumbers(char** back, int backSize, int mines) {
 	int row, col;
 	char *mineSlot, *tmpSlot;
-	srand(time(0));
+	srand(unsigned int (time(0)));
 	for (int i = 0; i < mines; ) {
 		row = generateRandomRowOrCol(backSize);
 		col = generateRandomRowOrCol(backSize);
@@ -533,13 +671,15 @@ void openSlotFirstTouch(char** &back, char** &front, int &frontSize, int row, in
 	}
 }
 
-void markOrUnmarkSlot(char** front, int row, int col) {
+void markOrUnmarkSlot(char** front, int row, int col, int &flags) {
 	char &slot = front[row - 1][col - 1];
 	if (slot == '#') {
 		slot = 'P';
+		flags += 1;
 	}
 	else {
 		slot = '#';
+		flags -= 1;
 	}
 }
 
