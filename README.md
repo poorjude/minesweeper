@@ -1,4 +1,4 @@
-# Minesweeper game in console
+## Minesweeper game in console
 To run: download `minesweeper.exe` and open it.
 
 Features:
@@ -6,6 +6,6 @@ Features:
 2. Possibility to choose any field size and any amount of mines.
 3. Possibility to save game records and view them later.
 
-`minesweeper.cpp` contains all the code.
+`minesweeper.cpp` contains all the code. It is written mostly in C style but has some C++ syntax features, so it can be compiled in a C++ compiler only.
 
-The code is mostly written in C style without any OOP elements, but it has some C++ syntax features, so it can be compiled in a C++ compiler only.
+The program will work correctly only in the Windows OS - this is due to the usage of console commands.
