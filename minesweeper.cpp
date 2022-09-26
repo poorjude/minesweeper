@@ -65,8 +65,8 @@ void freeMemoryAllocatedForField(char** field, int size);
 void fillFieldWithSymbol(char** field, int size, char symbol);
 void fillBackFieldWithMinesAndNumbers(char** back, int backSize, int mines); 
 void openWholeFrontField(char** back, int backSize, char** front);
-void replaceAllMinesWithFlags(char** front, int frontSize);
-void openSlot(char** &back, char** &front, int &frontSize, int row, int col); //
+void replaceAllMinesWithFlags(char** front, int frontSize, int mines, int &flags);
+void openSlot(char** &back, char** &front, int &frontSize, int row, int col);
 void openSlotFirstTouch(char** &back, char** &front, int &frontSize, int row, int col);
 void markOrUnmarkSlot(char** front, int row, int col, int &flags);
 bool checkWonOrNot(char** back, int backSize, char** front);
@@ -141,7 +141,7 @@ int main() {
 					if (gameIsGoing == false) {
 						timeSpent = unsigned int (time(0)) - startTimestamp;
 						openWholeFrontField(back, backSize, front);
-						replaceAllMinesWithFlags(front, frontSize);
+						replaceAllMinesWithFlags(front, frontSize, mines, flags);
 						printField(front, frontSize, mines, flags);
 						printYouWon(frontSize, mines, timeSpent);
 						insertNewRecord(frontSize, mines, timeSpent);
@@ -576,7 +576,7 @@ void openWholeFrontField(char** back, int backSize, char** front) {
 	}
 }
 
-void replaceAllMinesWithFlags(char** front, int frontSize) {
+void replaceAllMinesWithFlags(char** front, int frontSize, int mines, int &flags) {
 	for (int k = 0; k < frontSize; ++k) {
 		for (int i = 0; i < frontSize; ++i) {
 			if (front[k][i] == '*') {
@@ -584,6 +584,7 @@ void replaceAllMinesWithFlags(char** front, int frontSize) {
 			}
 		}
 	}
+	flags = mines;
 }
 
 void openSlot(char** &back, char** &front, int &frontSize, int row, int col) {
